@@ -1,0 +1,12 @@
+node_modules/
+nft-metadata.csv
+.env
+*.log
+out/
+cache/
+lib/
+forge-cache/
+bb-bridge-frontend/
+bunny-bridge-ui/
+artifacts/
+scripts/

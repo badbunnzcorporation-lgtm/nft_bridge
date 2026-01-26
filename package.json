@@ -1,0 +1,45 @@
+{
+  "name": "bb_bridge",
+  "version": "1.0.0",
+  "description": "NFT bridge from Ethereum to MegaETH",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "fetch-metadata": "node scripts/fetch-metadata.js",
+    "bridge": "node scripts/bridge-helper.js bridge",
+    "generate-proof": "node scripts/bridge-helper.js generate-proof",
+    "indexer-proof": "node scripts/indexer-service.js proof",
+    "indexer-block": "node scripts/indexer-service.js block",
+    "test": "forge test",
+    "test:foundry": "forge test",
+    "test:foundry:verbose": "forge test -vvv",
+    "test:foundry:gas": "forge test --gas-report",
+    "test:hardhat": "hardhat test",
+    "test:hardhat:roundtrip": "hardhat test test/hardhat/BridgeRoundTrip.test.js",
+    "test:hardhat:e2e": "hardhat test test/hardhat/BadBunnzBridgeE2E.test.js",
+    "test:all": "forge test && hardhat test"
+  },
+  "dependencies": {
+    "ethers": "^6.9.0",
+    "merkletreejs": "^0.3.11",
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-chai-matchers": "^2.1.0",
+    "@nomicfoundation/hardhat-ethers": "^3.1.2",
+    "@nomicfoundation/hardhat-ignition-ethers": "^0.15.16",
+    "@nomicfoundation/hardhat-network-helpers": "^1.1.2",
+    "@nomicfoundation/hardhat-toolbox": "^6.1.0",
+    "@nomicfoundation/hardhat-verify": "^2.1.3",
+    "@openzeppelin/contracts": "^4.9.5",
+    "@typechain/ethers-v6": "^0.5.1",
+    "@typechain/hardhat": "^9.1.0",
+    "@types/mocha": "^10.0.10",
+    "hardhat": "^2.27.0",
+    "hardhat-gas-reporter": "^2.3.0",
+    "keccak256": "^1.0.6",
+    "solidity-coverage": "^0.8.16",
+    "ts-node": "^10.9.2",
+    "typechain": "^8.3.2"
+  }
+}

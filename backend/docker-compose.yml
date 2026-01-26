@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: bb-bridge-db
+    environment:
+      POSTGRES_DB: bb_bridge
+      POSTGRES_USER: bridge_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./src/db/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bridge_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    container_name: bb-bridge-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Backend API
+  backend:
+    build: .
+    container_name: bb-bridge-backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      WS_PORT: 3001
+      DATABASE_URL: postgresql://bridge_user:${DB_PASSWORD:-changeme}@postgres:5432/bb_bridge
+      REDIS_URL: redis://redis:6379
+      ETHEREUM_RPC_URL: ${ETHEREUM_RPC_URL}
+      ETHEREUM_BRIDGE_ADDRESS: ${ETHEREUM_BRIDGE_ADDRESS}
+      ETHEREUM_NFT_ADDRESS: ${ETHEREUM_NFT_ADDRESS}
+      MEGAETH_RPC_URL: ${MEGAETH_RPC_URL}
+      MEGAETH_BRIDGE_ADDRESS: ${MEGAETH_BRIDGE_ADDRESS}
+      MEGAETH_NFT_ADDRESS: ${MEGAETH_NFT_ADDRESS}
+      RELAYER_PRIVATE_KEY: ${RELAYER_PRIVATE_KEY}
+      RELAYER_ADDRESS: ${RELAYER_ADDRESS}
+      AUTO_SUBMIT_ROOTS: ${AUTO_SUBMIT_ROOTS:-true}
+      CONFIRMATION_BLOCKS: ${CONFIRMATION_BLOCKS:-3}
+    ports:
+      - "3000:3000"
+      - "3001:3001"
+    volumes:
+      - ./logs:/app/logs
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
