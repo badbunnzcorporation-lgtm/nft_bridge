@@ -3,8 +3,12 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 import { config } from './config/index.js';
 import { logger } from './utils/logger.js';
+import { db } from './db/index.js';
 import { startAllListeners } from './services/eventListener.js';
 import { relayer } from './services/relayer.js';
 import { startWebSocketServer } from './services/websocket.js';
@@ -55,9 +59,32 @@ app.use('/api', apiRouter);
 
 app.use(errorHandler);
 
+async function runMigration() {
+  try {
+    logger.info('Checking database schema...');
+    
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = dirname(__filename);
+    const schemaPath = join(__dirname, 'db', 'schema.sql');
+    const schema = readFileSync(schemaPath, 'utf8');
+    
+    await db.query(schema);
+    logger.info('✅ Database schema initialized');
+  } catch (error) {
+    if (error.message.includes('already exists') || error.code === '42P07') {
+      logger.info('Database schema already exists, skipping migration');
+    } else {
+      logger.error('Migration failed:', error.message);
+      throw error;
+    }
+  }
+}
+
 async function start() {
   try {
     logger.info('Starting Bad Bunnz Bridge Backend...');
+
+    await runMigration();
 
     app.listen(config.server.port, () => {
       logger.info(`API server listening on port ${config.server.port}`);
