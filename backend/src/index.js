@@ -20,6 +20,9 @@ import { requireApiKey } from './middleware/apiKey.js';
 
 const app = express();
 
+// Trust proxy (e.g. Railway) so rate-limit and X-Forwarded-For work
+app.set('trust proxy', 1);
+
 // Middleware
 app.use(helmet());
 app.use(cors());
