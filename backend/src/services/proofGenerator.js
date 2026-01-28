@@ -125,19 +125,29 @@ export class ProofGenerator {
    */
   async getProof(lockHash) {
     try {
-      const proof = await db.getMerkleProof(lockHash);
+      const row = await db.getMerkleProof(lockHash);
       
-      if (!proof) {
+      if (!row) {
         throw new Error(`Proof not found for lock hash: ${lockHash}`);
       }
 
+      // PostgreSQL JSONB returns already-parsed object/array; column may also be stored as string
+      let proofArray = row.proof;
+      if (typeof proofArray === 'string') {
+        proofArray = proofArray.trim() ? JSON.parse(proofArray) : [];
+      }
+      if (!Array.isArray(proofArray)) {
+        proofArray = [];
+      }
+      // Empty proof is valid when there's only one lock in the block (single-leaf tree: leaf === root)
+
       return {
         lockHash,
-        proof: JSON.parse(proof.proof),
-        merkleRoot: proof.merkle_root,
-        blockNumber: proof.block_number,
-        sourceChain: proof.source_chain,
-        destinationChain: proof.destination_chain,
+        proof: proofArray,
+        merkleRoot: row.merkle_root,
+        blockNumber: row.block_number,
+        sourceChain: row.source_chain,
+        destinationChain: row.destination_chain,
       };
     } catch (error) {
       logger.error(`Error getting proof for ${lockHash}:`, error);
