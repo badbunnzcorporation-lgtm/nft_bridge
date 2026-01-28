@@ -27,7 +27,7 @@ interface INFT {
     function transferFrom(address from, address to, uint256 tokenId) external;
 }
 
-contract MegaEthBridge is Ownable, ReentrancyGuard {
+contract MegaEthBridge is Ownable, ReentrancyGuard, Pausable {
     INFT public nftCollection;
     address public ethereumBridge; // Ethereum bridge address on Ethereum
     address public rootSubmitter; // Authorized root submitter
