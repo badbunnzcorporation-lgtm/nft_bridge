@@ -19,6 +19,8 @@ export class EventListener {
     this.bridge = new ethers.Contract(bridgeAddress, BRIDGE_ABI, this.provider);
     this.isRunning = false;
     this.lastProcessedBlock = null;
+    // Smaller batches for eth_getLogs to avoid free-tier RPC timeouts (e.g. Base)
+    this.maxBlocksPerQuery = chainName === 'megaeth' ? 500 : 10;
   }
 
   async start() {
@@ -86,9 +88,7 @@ export class EventListener {
 
     if (blocksToProcess > 0) {
       logger.info(`Catching up ${blocksToProcess} blocks on ${this.chainName}`);
-      
-      // Process in batches to avoid overwhelming the system
-      const batchSize = 1000;
+      const batchSize = this.maxBlocksPerQuery;
       for (let i = this.lastProcessedBlock + 1; i <= currentBlock; i += batchSize) {
         const toBlock = Math.min(i + batchSize - 1, currentBlock);
         await this.processBatch(i, toBlock);
@@ -97,10 +97,18 @@ export class EventListener {
   }
 
   async processBatch(fromBlock, toBlock) {
+    const rangeSize = toBlock - fromBlock + 1;
+    if (rangeSize > this.maxBlocksPerQuery) {
+      for (let from = fromBlock; from <= toBlock; from += this.maxBlocksPerQuery) {
+        const to = Math.min(from + this.maxBlocksPerQuery - 1, toBlock);
+        await this.processBatch(from, to);
+      }
+      return;
+    }
+
     try {
       logger.info(`Processing blocks ${fromBlock} to ${toBlock} on ${this.chainName}`);
 
-      // Get all lock events in this range
       const lockFilter = this.bridge.filters.NFTLocked();
       const lockEvents = await this.bridge.queryFilter(lockFilter, fromBlock, toBlock);
 
@@ -109,7 +117,6 @@ export class EventListener {
         await this.handleLockEvent(tokenId, owner, recipient, lockHash, blockNumber, event);
       }
 
-      // Get all unlock events
       const unlockFilter = this.bridge.filters.NFTUnlocked();
       const unlockEvents = await this.bridge.queryFilter(unlockFilter, fromBlock, toBlock);
 
@@ -122,6 +129,18 @@ export class EventListener {
       await db.updateLastProcessedBlock(this.chainName, toBlock);
 
     } catch (error) {
+      const isTimeout = error?.code === 30 || /timeout|Request timeout/i.test(error?.message || '');
+      if (isTimeout && rangeSize > 1) {
+        logger.warn(`RPC timeout for blocks ${fromBlock}-${toBlock}, retrying one block at a time`);
+        for (let b = fromBlock; b <= toBlock; b++) {
+          try {
+            await this.processBatch(b, b);
+          } catch (retryErr) {
+            logger.error(`Error processing block ${b} on ${this.chainName}:`, retryErr);
+          }
+        }
+        return;
+      }
       logger.error(`Error processing batch ${fromBlock}-${toBlock} on ${this.chainName}:`, error);
       throw error;
     }
@@ -129,7 +148,7 @@ export class EventListener {
 
   async processBlock(blockNumber) {
     if (blockNumber <= this.lastProcessedBlock) {
-      return; // Already processed
+      return;
     }
 
     try {
