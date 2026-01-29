@@ -26,7 +26,15 @@ app.set('trust proxy', 1);
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
-app.use(morgan('combined', { stream: { write: message => logger.info(message.trim()) } }));
+app.use(
+  morgan('combined', {
+    stream: { write: (message) => logger.info(message.trim()) },
+    skip: (req) => {
+      const path = req.path || req.url?.split('?')[0] || '';
+      return path === '/health' || path === '/health/db' || path.startsWith('/api/stats');
+    },
+  })
+);
 
 app.get('/health', (req, res) => {
   res.json({ 
