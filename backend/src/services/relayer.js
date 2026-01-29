@@ -103,7 +103,6 @@ export class Relayer {
       await db.recordMetric('relayer_balance_eth', ethBalanceEth);
       await db.recordMetric('relayer_balance_mega', megaBalanceEth);
 
-      // Return balance data for stats endpoint
       return {
         ethereum: {
           balance: ethBalanceEth,
@@ -203,7 +202,6 @@ export class Relayer {
       let tx, receipt;
 
       if (destinationChain === 'megaeth') {
-        // Submit to MegaETH
         const gasEstimate = await this.megaBridge.setBlockRoot.estimateGas(
           blockNumberBigInt,
           merkleRoot,
@@ -221,7 +219,6 @@ export class Relayer {
         );
 
       } else {
-        // Submit to Ethereum
         const gasEstimate = await this.ethBridge.setMegaEthBlockRoot.estimateGas(
           blockNumberBigInt,
           merkleRoot,
@@ -406,9 +403,6 @@ export class Relayer {
     }
   }
 
-  /**
-   * Get current gas prices
-   */
   async getGasPrices() {
     const [ethFeeData, megaFeeData] = await Promise.all([
       this.ethProvider.getFeeData(),

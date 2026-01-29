@@ -137,6 +137,7 @@ export class EventListener {
             await this.processBatch(b, b);
           } catch (retryErr) {
             logger.error(`Error processing block ${b} on ${this.chainName}:`, retryErr);
+            return;
           }
         }
         return;
@@ -176,6 +177,10 @@ export class EventListener {
         txHash: tx.hash,
         status: 'pending',
       });
+
+      if (!lockEvent) {
+        return;
+      }
 
       broadcastEvent('lock', {
         chain: this.chainName,
@@ -243,7 +248,6 @@ export class EventListener {
   }
 }
 
-// Create listeners for both chains
 export const ethereumListener = new EventListener(
   'ethereum',
   config.ethereum.rpcUrl,
@@ -256,7 +260,6 @@ export const megaethListener = new EventListener(
   config.megaeth.bridgeAddress
 );
 
-// Start both listeners
 export async function startAllListeners() {
   await Promise.all([
     ethereumListener.start(),
@@ -265,7 +268,6 @@ export async function startAllListeners() {
   logger.info('All event listeners started');
 }
 
-// Stop all listeners
 export async function stopAllListeners() {
   await Promise.all([
     ethereumListener.stop(),

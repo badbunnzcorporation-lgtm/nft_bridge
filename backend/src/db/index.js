@@ -4,7 +4,6 @@ import { logger } from '../utils/logger.js';
 
 const { Pool } = pg;
 
-// Create connection pool
 const pool = new Pool({
   connectionString: config.database.url,
   max: 20,
@@ -12,7 +11,6 @@ const pool = new Pool({
   connectionTimeoutMillis: 2000,
 });
 
-// Test connection
 pool.on('connect', () => {
   logger.debug('Database connection established');
 });
@@ -25,9 +23,6 @@ pool.on('error', (err) => {
  * Database client with helper methods
  */
 export const db = {
-  /**
-   * Execute a query
-   */
   async query(text, params) {
     const start = Date.now();
     try {
@@ -42,7 +37,7 @@ export const db = {
   },
 
   /**
-   * Create lock event
+   * Create lock event (idempotent: same lock_hash is ignored so retries don't fail)
    */
   async createLockEvent(data) {
     const query = `
@@ -50,6 +45,7 @@ export const db = {
         token_id, owner_address, recipient_address, lock_hash,
         block_number, block_timestamp, chain, tx_hash, status
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      ON CONFLICT (lock_hash) DO NOTHING
       RETURNING *
     `;
     const values = [
@@ -67,18 +63,12 @@ export const db = {
     return result.rows[0];
   },
 
-  /**
-   * Get lock event by hash
-   */
   async getLockEvent(lockHash) {
     const query = 'SELECT * FROM lock_events WHERE lock_hash = $1';
     const result = await this.query(query, [lockHash]);
     return result.rows[0];
   },
 
-  /**
-   * Get lock events by block
-   */
   async getLockEventsByBlock(blockNumber, chain) {
     const query = `
       SELECT * FROM lock_events 
@@ -89,9 +79,6 @@ export const db = {
     return result.rows;
   },
 
-  /**
-   * Update lock event status
-   */
   async updateLockEventStatus(lockHash, status) {
     const query = `
       UPDATE lock_events 
@@ -103,9 +90,6 @@ export const db = {
     return result.rows[0];
   },
 
-  /**
-   * Update lock events by block
-   */
   async updateLockEventsByBlock(blockNumber, chain, status) {
     const query = `
       UPDATE lock_events 
@@ -115,9 +99,6 @@ export const db = {
     await this.query(query, [status, blockNumber, chain]);
   },
 
-  /**
-   * Create merkle proof
-   */
   async createMerkleProof(data) {
     const query = `
       INSERT INTO merkle_proofs (
@@ -140,18 +121,12 @@ export const db = {
     return result.rows[0];
   },
 
-  /**
-   * Get merkle proof
-   */
   async getMerkleProof(lockHash) {
     const query = 'SELECT * FROM merkle_proofs WHERE lock_hash = $1';
     const result = await this.query(query, [lockHash]);
     return result.rows[0];
   },
 
-  /**
-   * Create block root
-   */
   async createBlockRoot(data) {
     const query = `
       INSERT INTO block_roots (
@@ -174,9 +149,6 @@ export const db = {
     return result.rows[0];
   },
 
-  /**
-   * Get pending block roots
-   */
   async getPendingBlockRoots() {
     const query = `
       SELECT * FROM block_roots 
@@ -187,9 +159,6 @@ export const db = {
     return result.rows;
   },
 
-  /**
-   * Update block root submission
-   */
   async updateBlockRootSubmission(blockNumber, sourceChain, destinationChain, data) {
     const query = `
       UPDATE block_roots 
@@ -209,9 +178,6 @@ export const db = {
     return result.rows[0];
   },
 
-  /**
-   * Create unlock event
-   */
   async createUnlockEvent(data) {
     const query = `
       INSERT INTO unlock_events (
@@ -234,9 +200,6 @@ export const db = {
     return result.rows[0];
   },
 
-  /**
-   * Create relayer transaction
-   */
   async createRelayerTransaction(data) {
     const query = `
       INSERT INTO relayer_transactions (
@@ -249,9 +212,6 @@ export const db = {
     return result.rows[0];
   },
 
-  /**
-   * Update relayer transaction
-   */
   async updateRelayerTransaction(txHash, data) {
     const query = `
       UPDATE relayer_transactions 
@@ -271,9 +231,6 @@ export const db = {
     return result.rows[0];
   },
 
-  /**
-   * Get token bridge status
-   */
   async getTokenBridgeStatus(tokenId) {
     const query = `
       SELECT 
@@ -294,9 +251,6 @@ export const db = {
     return result.rows[0];
   },
 
-  /**
-   * Get bridge history for address
-   */
   async getBridgeHistory(address, page = 1, limit = 20) {
     const offset = (page - 1) * limit;
     const query = `
@@ -309,9 +263,6 @@ export const db = {
     return result.rows;
   },
 
-  /**
-   * Get pending locks
-   */
   async getPendingLocks() {
     const query = `
       SELECT * FROM pending_locks
@@ -321,9 +272,6 @@ export const db = {
     return result.rows;
   },
 
-  /**
-   * Complete bridge history
-   */
   async completeBridgeHistory(lockHash, unlockTxHash) {
     const query = `
       UPDATE bridge_history
@@ -334,9 +282,6 @@ export const db = {
     await this.query(query, [unlockTxHash, lockHash]);
   },
 
-  /**
-   * Record metric
-   */
   async recordMetric(name, value, chain = null) {
     const query = `
       INSERT INTO system_metrics (metric_name, metric_value, chain)
@@ -345,9 +290,6 @@ export const db = {
     await this.query(query, [name, value, chain]);
   },
 
-  /**
-   * Create failed transaction
-   */
   async createFailedTransaction(data) {
     const query = `
       INSERT INTO failed_transactions (

@@ -23,13 +23,11 @@ const app = express();
 // Trust proxy (e.g. Railway) so rate-limit and X-Forwarded-For work
 app.set('trust proxy', 1);
 
-// Middleware
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
 app.use(morgan('combined', { stream: { write: message => logger.info(message.trim()) } }));
 
-// Health check
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok', 
@@ -38,7 +36,6 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Security middleware for API routes
 const apiRouter = express.Router();
 
 if (config.api.key) {

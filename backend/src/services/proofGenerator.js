@@ -11,9 +11,6 @@ export class ProofGenerator {
     this.processing = new Set();
   }
 
-  /**
-   * Generate merkle proof for a specific block
-   */
   async generateProofForBlock(blockNumber, chain) {
     const key = `${chain}-${blockNumber}`;
     
@@ -120,9 +117,6 @@ export class ProofGenerator {
     }
   }
 
-  /**
-   * Get proof for a specific lock hash
-   */
   async getProof(lockHash) {
     try {
       const row = await db.getMerkleProof(lockHash);
@@ -155,9 +149,6 @@ export class ProofGenerator {
     }
   }
 
-  /**
-   * Verify a proof is valid
-   */
   verifyProof(leaf, proof, root) {
     try {
       const tree = new MerkleTree([], keccak256, { sortPairs: true });
@@ -168,9 +159,6 @@ export class ProofGenerator {
     }
   }
 
-  /**
-   * Get all pending proofs that need root submission
-   */
   async getPendingRootSubmissions() {
     try {
       return await db.getPendingBlockRoots();
