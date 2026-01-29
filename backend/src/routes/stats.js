@@ -122,7 +122,8 @@ router.get('/chain/:chain', async (req, res, next) => {
  */
 router.get('/recent', async (req, res, next) => {
   try {
-    const { limit = 10 } = req.query;
+    const raw = req.query.limit;
+    const limit = Math.min(100, Math.max(1, parseInt(raw, 10) || 10));
 
     const query = `
       SELECT 
@@ -139,7 +140,7 @@ router.get('/recent', async (req, res, next) => {
       LIMIT $1
     `;
     
-    const result = await db.query(query, [parseInt(limit)]);
+    const result = await db.query(query, [limit]);
 
     res.json(result.rows);
   } catch (error) {

@@ -36,6 +36,36 @@ app.get('/health', (req, res) => {
   });
 });
 
+/**
+ * GET /health/db - Check DB connection and stats query (same as /api/stats/recent).
+ * Returns 200 + { db: 'ok', tables: 'ok' } or 503 + { db: 'error', message }.
+ * No API key required. Use to debug 500s on /api/stats/recent.
+ */
+app.get('/health/db', async (req, res) => {
+  try {
+    await db.query('SELECT 1');
+    const query = `
+      SELECT le.token_id, le.chain, le.status, le.created_at, le.updated_at,
+             ue.tx_hash as unlock_tx_hash,
+             EXTRACT(EPOCH FROM (le.updated_at - le.created_at)) as duration_seconds
+      FROM lock_events le
+      LEFT JOIN unlock_events ue ON le.lock_hash = ue.lock_hash
+      ORDER BY le.created_at DESC
+      LIMIT 1
+    `;
+    await db.query(query);
+    res.json({ status: 'ok', db: 'ok', tables: 'ok' });
+  } catch (err) {
+    logger.error('Health DB check failed:', err.message);
+    res.status(503).json({
+      status: 'error',
+      db: 'error',
+      message: err.message,
+      hint: 'Check DATABASE_URL, schema (lock_events, unlock_events), and migrations.',
+    });
+  }
+});
+
 const apiRouter = express.Router();
 
 if (config.api.key) {
